@@ -1,0 +1,3 @@
+#+title: Codesnap.el
+
+This is a wrapper around the `codesnap-rs` package that integrates the screenshot functionality to Emacs.
