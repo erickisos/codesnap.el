@@ -1,3 +1,31 @@
 #+title: Codesnap.el
 
-This is a wrapper around the `codesnap-rs` package that integrates the screenshot functionality to Emacs.
+This is a wrapper around the =codesnap-rs= package that integrates the screenshot functionality to Emacs.
+
+* Installation
+
+- Download =codesnap-rs= CLI following the instructions [[https://github.com/codesnap-rs/codesnap?tab=readme-ov-file#cli][here]]
+
+** Doom Emacs Configuration
+
+=packages.el=
+#+begin_src emacs-lisp
+(package! codesnap
+  :recipe (:host github :repo "erickisos/codesnap.el" :files ("*.el")))
+#+end_src
+
+Optional: You can add your custom shortcuts inside your =config.el=
+
+#+begin_src emacs-lisp
+(use-package! codesnap
+  :config
+  (map! :localleader
+        :desc "Screenshot selected code" "S x" #'codesnap-selection
+        :desc "Show codesnap log" "S l" #'codesnap-show-log))
+#+end_src
+
+* Screenshots
+
+[[./images/codesnap_1.png]]
+
+[[./images/codesnap_2.png]]
