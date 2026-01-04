@@ -36,8 +36,46 @@
 
 (defcustom codesnap-watermark "CodeSnap.el"
   "Watermark that will be used within the generated screensot."
-  :type  'string
+  :type  '(choice
+           (string :tag "Watermark text")
+           (const :tag "No Watermark" nil))
   :group 'codesnap)
+
+(defcustom codesnap-breadcrumbs t
+  "Enables the breadcrumbs to be displayed in the snapshot."
+  :type 'boolean
+  :group 'codesnap)
+
+(defcustom codesnap-theme nil
+  "Code theme for syntax higlighting in the screenshot.
+
+When nil, will try to load the theme from the config file.
+See codesnap-rs documentation for available themes."
+  :type '(choice
+          (string :tag "Theme name")
+          (const :tag "Use config file theme" nil))
+  :group 'codesnap)
+
+(defun codesnap--build-args (start-range end-range &rest kw-args)
+  "Build command-line arguments for codesnap.
+
+KW-ARGS should contain one of the following: FILENAME, SOURCE;
+this will be used to render the final output.
+
+FILENAME is the file to snapshot, START-RANGE and END-RANGE define
+the code range."
+  (let ((filename    (plist-get kw-args :filename))
+        (source-code (plist-get kw-args :source)))
+    (append (if filename
+                (list "--from-file" filename)
+              (list "--from-code" source-code))
+            (list "--range"     (format "%d:%d" start-range end-range)
+                  "--has-line-number")
+            (when codesnap-watermark
+              (list "--watermark" codesnap-watermark))
+            (when codesnap-breadcrumbs
+              (list "--has-breadcrumbs" "true"))
+            (list "--output" "clipboard"))))
 
 ;;;###autoload
 (defun codesnap-selection ()
@@ -48,13 +86,17 @@
   (let* ((filename    (buffer-file-name))
          (start-range (line-number-at-pos (region-beginning)))
          (end-range   (line-number-at-pos (region-end)))
+         (line-start  (save-excursion (goto-char (point-min))
+                                      (forward-line (1- start-range))
+                                      (line-beginning-position)))
+         (line-end    (save-excursion (goto-char (point-min))
+                                      (forward-line (1- end-range))
+                                      (line-end-position)))
+         (code        (buffer-substring-no-properties line-start line-end))
          (log-buffer  (get-buffer-create codesnap-log-buffer))
-         (result      (call-process codesnap-binary nil log-buffer t
-                                    "--from-file" filename
-                                    "--output"    "clipboard"
-                                    "--range"     (format "%d:%d" start-range end-range)
-                                    "--watermark" codesnap-watermark
-                                    "--has-line-number")))
+         (args        (codesnap--build-args start-range end-range :filename filename :source code))
+         (result      (apply #'call-process codesnap-binary nil log-buffer t args)))
+    (message "CodeSnap: code - %s" code)
     (if (zerop result)
         (message "CodeSnap: screenshot copied to clipboard")
       (message "CodeSnap: failed - check %s buffer" log-buffer)
